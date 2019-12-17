@@ -1,0 +1,75 @@
+---
+title: "FINAL EXAM PART B"
+author: "Brianna Womack"
+date: "12/17/2019"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+## SET UP
+
+```{r import-data}
+library(tidyverse)
+library(lubridate)
+
+ky <- read_csv("~/Desktop/ky_17.csv")
+```
+
+```{r sum-data}
+summary(ky)
+```
+
+
+```{r group-data}
+louisville = ky %>% group_by(subject_race) %>% summarize(n=n(), prop=n/nrow(.))
+louisville = louisville %>% filter(subject_race != "other")
+```
+
+
+```{r add-new-data}
+population <- tibble(subject_race = c("asian/pacific islander", "black", "hispanic", "white"), num_people=c(15879, 140979, 31717, 409519))
+```
+
+
+```{r join-data}
+combined <- left_join(population,louisville, by = "subject_race")
+combined <- mutate(combined, stop_rate = n/num_people)
+```
+
+
+
+###Statement of Analysis: It appears that the black drivers are stopped 3x more than asian/pacific islanders, and 2x more than white and hispanic drivers.
+
+
+## DATA VISUALIZATION
+
+### BAR CHART
+```{r}
+combined$stop_rate <- round(combined$stop_rate,2)
+
+ggplot(combined, aes(x=reorder(subject_race, stop_rate), y=stop_rate))+
+  geom_bar(stat="identity", position="identity", fill="blue")+
+  geom_hline(yintercept = 0)+
+  labs(title="Stopped Drivers by Race",
+       subtitle = "African American drivers got stopped the most in Louisville, KY")+
+  geom_text(aes(label=stop_rate), vjust=-0.3, size=3.5)+
+  coord_flip()+
+  theme_minimal()
+  
+```
+
+### INTERACTIVE MAP
+
+```{r}
+
+library(httpuv)
+library(leaflet)
+race <- colorFactor(c("pink", "black", "yellow", "red"), domain=c("white", "black", "asian/pacific islander", "hispanic"), ordered=TRUE)
+m<- leaflet(ky) %>%
+  addProviderTiles(providers$CartoDB) %>% 
+  setView(lng= -85.764771, lat= 38.328732, zoom=12) %>% 
+  addCircleMarkers(~lng, ~lat, popup=paste("This is a", ky$subject_race, "driver."), weight= 2, radius=2, color=~race(subject_race), stroke=F, fillOpacity=1)
+
+m
+```
